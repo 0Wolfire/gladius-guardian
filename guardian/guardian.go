@@ -2,7 +2,6 @@ package guardian
 
 import (
 	"errors"
-	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -19,8 +18,29 @@ func New() *GladiusGuardian {
 type GladiusGuardian struct {
 	mux          *sync.Mutex
 	spawnTimeout *time.Duration
-	networkd     *os.Process
-	controld     *os.Process
+	networkd     *exec.Cmd
+	controld     *exec.Cmd
+}
+
+type serviceStatus struct {
+	Running  bool     `json:"running"`
+	PID      int      `json:"pid"`
+	Env      []string `json:"environment_vars"`
+	Location string   `json:"executable_location"`
+}
+
+func newServiceStatus(p *exec.Cmd) *serviceStatus {
+	if p != nil {
+		return &serviceStatus{
+			Running:  true,
+			PID:      p.Process.Pid,
+			Env:      p.Env,
+			Location: p.Path,
+		}
+	}
+	return &serviceStatus{
+		Running: true,
+	}
 }
 
 func (gg *GladiusGuardian) SetTimeout(t *time.Duration) {
@@ -28,6 +48,17 @@ func (gg *GladiusGuardian) SetTimeout(t *time.Duration) {
 	defer gg.mux.Unlock()
 
 	gg.spawnTimeout = t
+}
+
+func (gg *GladiusGuardian) GetServicesStatus() map[string]*serviceStatus {
+	gg.mux.Lock()
+	defer gg.mux.Unlock()
+
+	services := make(map[string]*serviceStatus)
+	services["networkd"] = newServiceStatus(gg.networkd)
+	services["controld"] = newServiceStatus(gg.controld)
+
+	return services
 }
 
 func (gg *GladiusGuardian) StopAll() error {
@@ -92,7 +123,7 @@ func (gg *GladiusGuardian) checkTimeout() error {
 	return nil
 }
 
-func spawnProcess(location string, env []string, timeout *time.Duration) (*os.Process, error) {
+func spawnProcess(location string, env []string, timeout *time.Duration) (*exec.Cmd, error) {
 	p := exec.Command(location)
 	p.Env = env
 
@@ -107,5 +138,5 @@ func spawnProcess(location string, env []string, timeout *time.Duration) (*os.Pr
 	// Wait for the process to start
 	time.Sleep(*timeout)
 
-	return p.Process, nil
+	return p, nil
 }
