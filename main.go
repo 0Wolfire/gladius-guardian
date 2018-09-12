@@ -15,6 +15,8 @@ func main() {
 	r := mux.NewRouter()
 	gg := guardian.New()
 
+	// Setup routes
+
 	srv := &http.Server{
 		Addr: "0.0.0.0:8080",
 		// Good practice to set timeouts to avoid Slowloris attacks.
