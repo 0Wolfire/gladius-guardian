@@ -11,7 +11,7 @@ import (
 )
 
 // New returns a new GladiusGuardian object with the specified spawn timeout
-func New(timeout time.Duration) *GladiusGuardian {
+func New() *GladiusGuardian {
 	return &GladiusGuardian{mux: &sync.Mutex{}}
 }
 
