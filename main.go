@@ -2,18 +2,33 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
+	gconfig "github.com/gladiusio/gladius-utils/config"
+
+	log "github.com/sirupsen/logrus"
+
+	"github.com/gladiusio/gladius-guardian/config"
 	"github.com/gladiusio/gladius-guardian/guardian"
+	"github.com/gladiusio/gladius-guardian/service"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 )
 
 func main() {
+	service.SetupService(run)
+}
+
+func run() {
+	base, err := gconfig.GetGladiusBase()
+	log.WithFields(log.Fields{
+		"err": err,
+	}).Fatal("Couldn't get Gladius base")
+	config.SetupConfig(base)
+
 	r := mux.NewRouter()
 	gg := guardian.New()
 
@@ -29,15 +44,23 @@ func main() {
 		viper.GetStringSlice("cotnroldEnvironment"),
 	)
 
-	// Setup routes
+	// Handle the index
+	r.HandleFunc("/", guardian.IndexHandler)
 
+	// Guardian related endpoints
+	r.HandleFunc("/service/start", guardian.IndexHandler).Methods("POST")
+	r.HandleFunc("/service/stop", guardian.StopServiceHandler(gg)).Methods("POST")
+	r.HandleFunc("/service/stop/all", guardian.StopAllServiceHandler(gg)).Methods("POST")
+	r.HandleFunc("/service/start_timeout", guardian.SetStartTimeoutHandler(gg)).Methods("POST")
+	r.HandleFunc("/service/logs", guardian.GetLogsHandler(gg)).Methods("GET")
+
+	// Setup a custom server so we can gracefully stop later
 	srv := &http.Server{
-		Addr: "0.0.0.0:7791",
-		// Good practice to set timeouts to avoid Slowloris attacks.
+		Addr:         "0.0.0.0:7791",
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      r, // Pass our instance of gorilla/mux in.
+		Handler:      r,
 	}
 
 	// Run our server in a goroutine so that it doesn't block.

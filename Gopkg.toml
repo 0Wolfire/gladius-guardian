@@ -17,3 +17,8 @@
 [[constraint]]
   name = "github.com/hashicorp/go-multierror"
   version = "1.0.0"
+
+# Gladius Packages
+[[constraint]]
+  name = "github.com/gladiusio/gladius-utils"
+  version = "~0.3.0"
