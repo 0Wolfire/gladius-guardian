@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -55,6 +56,11 @@ func newServiceStatus(p *exec.Cmd) *serviceStatus {
 }
 
 func (gg *GladiusGuardian) RegisterService(name, execLocation string, env []string) {
+	log.WithFields(log.Fields{
+		"service_name":     name,
+		"exec_location":    execLocation,
+		"environment_vars": strings.Join(env, ", "),
+	}).Debug("Registered new service")
 	gg.registeredServices[name] = &serviceSettings{env: env, execName: execLocation}
 	gg.services[name] = nil // So it's still returned when we list services
 }
@@ -88,7 +94,12 @@ func (gg *GladiusGuardian) StopAll() error {
 		err := s.Process.Kill()
 		result = multierror.Append(result, fmt.Errorf("error stopping service %s: %s", sName, err))
 	}
-
+	err := result.ErrorOrNil()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Warn("Error stoping one or more service")
+	}
 	return result.ErrorOrNil()
 }
 
@@ -110,6 +121,11 @@ func (gg *GladiusGuardian) StartService(name string, env []string) error {
 		return nil
 	}
 	gg.services[name] = p
+	log.WithFields(log.Fields{
+		"service_name":     name,
+		"exec_location":    serviceSettings.execName,
+		"environment_vars": strings.Join(env, ", "),
+	}).Debug("Started service")
 	return nil
 }
 
@@ -117,7 +133,7 @@ func (gg *GladiusGuardian) StopService(name string) error {
 	gg.mux.Lock()
 	defer gg.mux.Unlock()
 
-	_, ok := gg.registeredServices[name]
+	serviceSettings, ok := gg.registeredServices[name]
 	if !ok {
 		return errors.New("attempted to stop unregistered service")
 	}
@@ -129,6 +145,12 @@ func (gg *GladiusGuardian) StopService(name string) error {
 
 	err := service.Process.Kill()
 	if err != nil {
+		log.WithFields(log.Fields{
+			"service_name":     name,
+			"exec_location":    serviceSettings.execName,
+			"environment_vars": strings.Join(serviceSettings.env, ", "),
+			"err":              err,
+		}).Warn("Couldn't kill service")
 		return errors.New("couldn't kill service, error was: " + err.Error())
 	}
 
@@ -150,7 +172,11 @@ func spawnProcess(location string, env []string, timeout *time.Duration) (*exec.
 		// TODO: Configure logging through API/defualts
 		_, err := proc.CombinedOutput()
 		if err != nil {
-			log.Warn("couldn't spawn process " + err.Error())
+			log.WithFields(log.Fields{
+				"exec_location":    location,
+				"environment_vars": strings.Join(env, ", "),
+				"err":              err,
+			}).Warn("Couldn't spawn process")
 		}
 	}(p)
 
