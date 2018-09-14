@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -9,16 +10,29 @@ import (
 
 	"github.com/gladiusio/gladius-guardian/guardian"
 	"github.com/gorilla/mux"
+	"github.com/spf13/viper"
 )
 
 func main() {
 	r := mux.NewRouter()
 	gg := guardian.New()
 
+	// Register our two daemons
+	gg.RegisterService(
+		"networkd",
+		viper.GetString("networkdExecutable"),
+		viper.GetStringSlice("networkdEnvironment"),
+	)
+	gg.RegisterService(
+		"cotnrold",
+		viper.GetString("cotnroldExecutable"),
+		viper.GetStringSlice("cotnroldEnvironment"),
+	)
+
 	// Setup routes
 
 	srv := &http.Server{
-		Addr: "0.0.0.0:8080",
+		Addr: "0.0.0.0:7791",
 		// Good practice to set timeouts to avoid Slowloris attacks.
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
@@ -43,5 +57,10 @@ func main() {
 }
 
 func stopHTTPServer(srv *http.Server) {
+	// Create a deadline to wait for.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
+	srv.Shutdown(ctx)
+	os.Exit(0)
 }

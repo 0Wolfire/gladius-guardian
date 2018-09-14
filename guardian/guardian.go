@@ -2,24 +2,35 @@ package guardian
 
 import (
 	"errors"
+	"fmt"
 	"os/exec"
 	"sync"
 	"time"
 
+	multierror "github.com/hashicorp/go-multierror"
 	log "github.com/sirupsen/logrus"
 )
 
 // New returns a new GladiusGuardian object with the specified spawn timeout
 func New() *GladiusGuardian {
-	return &GladiusGuardian{mux: &sync.Mutex{}}
+	return &GladiusGuardian{
+		mux:                &sync.Mutex{},
+		registeredServices: make(map[string]*serviceSettings),
+		services:           make(map[string]*exec.Cmd),
+	}
 }
 
 // GladiusGuardian manages the various gladius processes
 type GladiusGuardian struct {
-	mux          *sync.Mutex
-	spawnTimeout *time.Duration
-	networkd     *exec.Cmd
-	controld     *exec.Cmd
+	mux                *sync.Mutex
+	spawnTimeout       *time.Duration
+	registeredServices map[string]*serviceSettings
+	services           map[string]*exec.Cmd
+}
+
+type serviceSettings struct {
+	env      []string
+	execName string
 }
 
 type serviceStatus struct {
@@ -39,8 +50,13 @@ func newServiceStatus(p *exec.Cmd) *serviceStatus {
 		}
 	}
 	return &serviceStatus{
-		Running: true,
+		Running: false,
 	}
+}
+
+func (gg *GladiusGuardian) RegisterService(name, execLocation string, env []string) {
+	gg.registeredServices[name] = &serviceSettings{env: env, execName: execLocation}
+	gg.services[name] = nil // So it's still returned when we list services
 }
 
 func (gg *GladiusGuardian) SetTimeout(t *time.Duration) {
@@ -55,8 +71,9 @@ func (gg *GladiusGuardian) GetServicesStatus() map[string]*serviceStatus {
 	defer gg.mux.Unlock()
 
 	services := make(map[string]*serviceStatus)
-	services["networkd"] = newServiceStatus(gg.networkd)
-	services["controld"] = newServiceStatus(gg.controld)
+	for serviceName, service := range gg.services {
+		services[serviceName] = newServiceStatus(service)
+	}
 
 	return services
 }
@@ -65,53 +82,55 @@ func (gg *GladiusGuardian) StopAll() error {
 	gg.mux.Lock()
 	defer gg.mux.Unlock()
 
-	return nil
+	var result *multierror.Error
+
+	for sName, s := range gg.services {
+		err := s.Process.Kill()
+		result = multierror.Append(result, fmt.Errorf("error stopping service %s: %s", sName, err))
+	}
+
+	return result.ErrorOrNil()
 }
 
-func (gg *GladiusGuardian) StartControld(env []string) error {
+func (gg *GladiusGuardian) StartService(name string, env []string) error {
 	gg.mux.Lock()
 	defer gg.mux.Unlock()
+
+	serviceSettings, ok := gg.registeredServices[name]
+	if !ok {
+		return errors.New("attempted to start unregistered service")
+	}
 
 	if err := gg.checkTimeout(); err != nil {
 		return err
 	}
 
-	// TODO: Let this location be configurable
-	p, err := spawnProcess("gladius-controld", env, gg.spawnTimeout)
+	p, err := spawnProcess(serviceSettings.execName, serviceSettings.env, gg.spawnTimeout)
 	if err != nil {
 		return nil
 	}
-	gg.controld = p
+	gg.services[name] = p
 	return nil
 }
 
-func (gg *GladiusGuardian) StartNetworkd(env []string) error {
+func (gg *GladiusGuardian) StopService(name string) error {
 	gg.mux.Lock()
 	defer gg.mux.Unlock()
 
-	if err := gg.checkTimeout(); err != nil {
-		return err
+	_, ok := gg.registeredServices[name]
+	if !ok {
+		return errors.New("attempted to stop unregistered service")
 	}
 
-	// TODO: Let this location be configurable
-	p, err := spawnProcess("gladius-networkd", env, gg.spawnTimeout)
+	service := gg.services[name]
+	if service == nil {
+		return errors.New("service is not running so can not stop")
+	}
+
+	err := service.Process.Kill()
 	if err != nil {
-		return nil
+		return errors.New("couldn't kill service, error was: " + err.Error())
 	}
-	gg.controld = p
-	return nil
-}
-
-func (gg *GladiusGuardian) StopControld() error {
-	gg.mux.Lock()
-	defer gg.mux.Unlock()
-
-	return nil
-}
-
-func (gg *GladiusGuardian) StopNetworkd() error {
-	gg.mux.Lock()
-	defer gg.mux.Unlock()
 
 	return nil
 }
@@ -131,7 +150,7 @@ func spawnProcess(location string, env []string, timeout *time.Duration) (*exec.
 		// TODO: Configure logging through API/defualts
 		_, err := proc.CombinedOutput()
 		if err != nil {
-			log.Warn("Couldn't spawn process " + err.Error())
+			log.Warn("couldn't spawn process " + err.Error())
 		}
 	}(p)
 
