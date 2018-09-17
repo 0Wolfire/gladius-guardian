@@ -35,13 +35,13 @@ func run() {
 	// Register our two daemons
 	gg.RegisterService(
 		"networkd",
-		viper.GetString("networkdExecutable"),
-		viper.GetStringSlice("networkdEnvironment"),
+		viper.GetString("NetworkdExecutable"),
+		viper.GetStringSlice("NetworkdEnvironment"),
 	)
 	gg.RegisterService(
 		"cotnrold",
-		viper.GetString("cotnroldExecutable"),
-		viper.GetStringSlice("cotnroldEnvironment"),
+		viper.GetString("ControldExecutable"),
+		viper.GetStringSlice("ControldEnvironment"),
 	)
 
 	// Handle the index

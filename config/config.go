@@ -17,8 +17,8 @@ func SetupConfig(configFilePath string) {
 		log.Fatal(fmt.Errorf("Fatal error reading config file: %s \n", err))
 	}
 
-	ConfigOption("networkdExecutable", "gladius-networkd")
-	ConfigOption("controldExectuable", "gladius-controld")
+	ConfigOption("NetworkdExecutable", "gladius-networkd")
+	ConfigOption("ControldExectuable", "gladius-controld")
 
 	// Setup gladius base for the various services
 	base, err := gconfig.GetGladiusBase()
@@ -27,8 +27,7 @@ func SetupConfig(configFilePath string) {
 			"err": err,
 		}).Warn("Couldn't get Gladius base")
 	}
-	ConfigOption("networkdEnvironment", []string{"GLADIUSBASE=" + base})
-	ConfigOption("controldEnvironment", []string{"GLADIUSBASE=" + base})
+	ConfigOption("DefaultEnvironment", []string{"GLADIUSBASE=" + base})
 }
 
 func ConfigOption(key string, defaultValue interface{}) string {

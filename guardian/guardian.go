@@ -10,6 +10,7 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 )
 
 // New returns a new GladiusGuardian object with the specified spawn timeout
@@ -110,6 +111,10 @@ func (gg *GladiusGuardian) StartService(name string, env []string) error {
 	serviceSettings, ok := gg.registeredServices[name]
 	if !ok {
 		return errors.New("attempted to start unregistered service")
+	}
+
+	if len(env) == 0 {
+		env = viper.GetStringSlice("DefaultEnvironment")
 	}
 
 	if err := gg.checkTimeout(); err != nil {
