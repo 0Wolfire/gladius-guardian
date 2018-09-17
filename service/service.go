@@ -9,6 +9,6 @@ func SetupService(run func()) {
 		"Gladius Guardian",
 		"Gladius Guardian"
 
-	// Run the function "run" in newtworkd as a service
+	// Run the function "run" in guardian as a service
 	manager.RunService(name, displayName, description, run)
 }
