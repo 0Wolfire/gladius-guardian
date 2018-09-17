@@ -1,6 +1,7 @@
 package guardian
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -176,17 +177,42 @@ func spawnProcess(location string, env []string, timeout *time.Duration) (*exec.
 	p := exec.Command(location)
 	p.Env = env
 
-	go func(proc *exec.Cmd) {
-		// TODO: Configure logging through API/defualts
-		_, err := proc.CombinedOutput()
-		if err != nil {
-			log.WithFields(log.Fields{
-				"exec_location":    location,
-				"environment_vars": strings.Join(env, ", "),
-				"err":              err,
-			}).Warn("Couldn't spawn process")
+	// Create standard err and out pipes
+	stdOut, err := p.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("Error creating StdoutPipe for command: %s", err)
+	}
+	stdErr, err := p.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("Error creating StderrPipe for command: %s", err)
+	}
+
+	// Read both of those in
+	scanner := bufio.NewScanner(stdOut)
+	stdErrScanner := bufio.NewScanner(stdErr)
+	go func() {
+		defer stdOut.Close()
+		for scanner.Scan() {
+			fmt.Printf("%s\n", scanner.Text())
 		}
-	}(p)
+	}()
+	go func() {
+		defer stdErr.Close()
+		for stdErrScanner.Scan() {
+			fmt.Printf("%s\n", scanner.Text())
+		}
+	}()
+
+	// Start the command
+	err = p.Start()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"exec_location":    location,
+			"environment_vars": strings.Join(env, ", "),
+			"err":              err,
+		}).Warn("Couldn't spawn process")
+		return nil, fmt.Errorf("Error starting process: %s", err)
+	}
 
 	// Wait for the process to start
 	time.Sleep(*timeout)
