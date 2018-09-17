@@ -24,10 +24,26 @@ func main() {
 
 func run() {
 	base, err := gconfig.GetGladiusBase()
-	log.WithFields(log.Fields{
-		"err": err,
-	}).Fatal("Couldn't get Gladius base")
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Fatal("Couldn't get Gladius base")
+	}
 	config.SetupConfig(base)
+
+	// Setup logging level
+	switch loglevel := viper.GetString("LogLevel"); loglevel {
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	case "warning":
+		log.SetLevel(log.WarnLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+	default:
+		log.SetLevel(log.InfoLevel)
+	}
 
 	r := mux.NewRouter()
 	gg := guardian.New()
@@ -36,22 +52,22 @@ func run() {
 	gg.RegisterService(
 		"networkd",
 		viper.GetString("NetworkdExecutable"),
-		viper.GetStringSlice("NetworkdEnvironment"),
+		viper.GetStringSlice("DefaultEnvironment"),
 	)
 	gg.RegisterService(
-		"cotnrold",
+		"controld",
 		viper.GetString("ControldExecutable"),
-		viper.GetStringSlice("ControldEnvironment"),
+		viper.GetStringSlice("DefaultEnvironment"),
 	)
 
 	// Handle the index
 	r.HandleFunc("/", guardian.IndexHandler)
 
 	// Guardian related endpoints
-	r.HandleFunc("/service/start", guardian.IndexHandler).Methods("POST")
+	r.HandleFunc("/service/start", guardian.StartServiceHandler(gg)).Methods("POST")
 	r.HandleFunc("/service/stop", guardian.StopServiceHandler(gg)).Methods("POST")
 	r.HandleFunc("/service/stop/all", guardian.StopAllServiceHandler(gg)).Methods("POST")
-	r.HandleFunc("/service/start_timeout", guardian.SetStartTimeoutHandler(gg)).Methods("POST")
+	r.HandleFunc("/service/set_timeout", guardian.SetStartTimeoutHandler(gg)).Methods("POST")
 	r.HandleFunc("/service/logs", guardian.GetLogsHandler(gg)).Methods("GET")
 
 	// Setup a custom server so we can gracefully stop later

@@ -92,8 +92,11 @@ func (gg *GladiusGuardian) StopAll() error {
 	var result *multierror.Error
 
 	for sName, s := range gg.services {
-		err := s.Process.Kill()
-		result = multierror.Append(result, fmt.Errorf("error stopping service %s: %s", sName, err))
+		if s != nil {
+			err := s.Process.Kill()
+			result = multierror.Append(result, fmt.Errorf("error stopping service %s: %s", sName, err))
+		}
+		result = multierror.Append(result, fmt.Errorf("service not running: %s", sName))
 	}
 	err := result.ErrorOrNil()
 	if err != nil {

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 
 	gconfig "github.com/gladiusio/gladius-utils/config"
 	log "github.com/sirupsen/logrus"
@@ -12,13 +13,19 @@ func SetupConfig(configFilePath string) {
 	viper.SetConfigName("gladius-guardian")
 	viper.AddConfigPath(configFilePath)
 
+	// Setup env variable handling
+	viper.SetEnvPrefix("GUARDIAN")
+	r := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(r)
+	viper.AutomaticEnv()
+
 	err := viper.ReadInConfig()
 	if err != nil {
-		log.Fatal(fmt.Errorf("Fatal error reading config file: %s \n", err))
+		log.Warn(fmt.Errorf("error reading config file: %s, using defaults", err))
 	}
 
 	ConfigOption("NetworkdExecutable", "gladius-networkd")
-	ConfigOption("ControldExectuable", "gladius-controld")
+	ConfigOption("ControldExecutable", "gladius-controld")
 
 	// Setup gladius base for the various services
 	base, err := gconfig.GetGladiusBase()
@@ -27,7 +34,24 @@ func SetupConfig(configFilePath string) {
 			"err": err,
 		}).Warn("Couldn't get Gladius base")
 	}
+
+	// Add a default environment so that we can set the gladius base of our sub
+	// processes
 	ConfigOption("DefaultEnvironment", []string{"GLADIUSBASE=" + base})
+
+	// Setup logging level
+	switch loglevel := viper.GetString("LogLevel"); loglevel {
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	case "warning":
+		log.SetLevel(log.WarnLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+	default:
+		log.SetLevel(log.InfoLevel)
+	}
 }
 
 func ConfigOption(key string, defaultValue interface{}) string {
