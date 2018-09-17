@@ -31,20 +31,6 @@ func run() {
 	}
 	config.SetupConfig(base)
 
-	// Setup logging level
-	switch loglevel := viper.GetString("LogLevel"); loglevel {
-	case "debug":
-		log.SetLevel(log.DebugLevel)
-	case "warning":
-		log.SetLevel(log.WarnLevel)
-	case "info":
-		log.SetLevel(log.InfoLevel)
-	case "error":
-		log.SetLevel(log.ErrorLevel)
-	default:
-		log.SetLevel(log.InfoLevel)
-	}
-
 	r := mux.NewRouter()
 	gg := guardian.New()
 
