@@ -118,7 +118,7 @@ func (gg *GladiusGuardian) StartService(name string, env []string) error {
 
 	p, err := spawnProcess(serviceSettings.execName, serviceSettings.env, gg.spawnTimeout)
 	if err != nil {
-		return nil
+		return err
 	}
 	gg.services[name] = p
 	log.WithFields(log.Fields{
