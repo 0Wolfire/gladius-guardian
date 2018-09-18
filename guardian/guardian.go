@@ -4,15 +4,23 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"net/http"
 	"os/exec"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/gorilla/websocket"
 	multierror "github.com/hashicorp/go-multierror"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin:     func(r *http.Request) bool { return true },
+}
 
 // New returns a new GladiusGuardian object with the specified spawn timeout
 func New() *GladiusGuardian {
@@ -20,6 +28,7 @@ func New() *GladiusGuardian {
 		mux:                &sync.Mutex{},
 		registeredServices: make(map[string]*serviceSettings),
 		services:           make(map[string]*exec.Cmd),
+		serviceLogs:        make(map[string]*FixedSizeLog),
 	}
 }
 
@@ -29,6 +38,7 @@ type GladiusGuardian struct {
 	spawnTimeout       *time.Duration
 	registeredServices map[string]*serviceSettings
 	services           map[string]*exec.Cmd
+	serviceLogs        map[string]*FixedSizeLog
 }
 
 type serviceSettings struct {
@@ -117,6 +127,10 @@ func (gg *GladiusGuardian) StartService(name string, env []string) error {
 		return errors.New("attempted to start unregistered service")
 	}
 
+	if gg.services[name] != nil {
+		return fmt.Errorf("can't start %s because it's already running", name)
+	}
+
 	if len(env) == 0 {
 		env = viper.GetStringSlice("DefaultEnvironment")
 	}
@@ -125,7 +139,7 @@ func (gg *GladiusGuardian) StartService(name string, env []string) error {
 		return err
 	}
 
-	p, err := spawnProcess(serviceSettings.execName, serviceSettings.env, gg.spawnTimeout)
+	p, err := gg.spawnProcess(name, serviceSettings.execName, serviceSettings.env, gg.spawnTimeout)
 	if err != nil {
 		return err
 	}
@@ -166,6 +180,31 @@ func (gg *GladiusGuardian) StopService(name string) error {
 	return nil
 }
 
+func (gg *GladiusGuardian) AddLogClient(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Warn(err)
+		return
+	}
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+
+			if err := conn.WriteMessage(websocket.TextMessage, []byte("testing123")); err != nil {
+				log.Println(err)
+				return
+			}
+		}
+	}()
+}
+
+func (gg *GladiusGuardian) AppendToLog(serviceName, line string) {
+	if gg.serviceLogs[serviceName] == nil {
+		gg.serviceLogs[serviceName] = NewFixedSizeLog(viper.GetInt("MaxLogLines"))
+	}
+	gg.serviceLogs[serviceName].Append(line) // Add to our internal fixed size log
+}
+
 func (gg *GladiusGuardian) checkTimeout() error {
 	if gg.spawnTimeout == nil {
 		return errors.New("spawn timeout not set, please set it before a process is spawned")
@@ -173,7 +212,7 @@ func (gg *GladiusGuardian) checkTimeout() error {
 	return nil
 }
 
-func spawnProcess(location string, env []string, timeout *time.Duration) (*exec.Cmd, error) {
+func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, timeout *time.Duration) (*exec.Cmd, error) {
 	p := exec.Command(location)
 	p.Env = env
 
@@ -193,13 +232,13 @@ func spawnProcess(location string, env []string, timeout *time.Duration) (*exec.
 	go func() {
 		defer stdOut.Close()
 		for scanner.Scan() {
-			fmt.Printf("%s\n", scanner.Text())
+			gg.AppendToLog(name, scanner.Text())
 		}
 	}()
 	go func() {
 		defer stdErr.Close()
 		for stdErrScanner.Scan() {
-			fmt.Printf("%s\n", scanner.Text())
+			gg.AppendToLog(name, stdErrScanner.Text())
 		}
 	}()
 
@@ -214,8 +253,28 @@ func spawnProcess(location string, env []string, timeout *time.Duration) (*exec.
 		return nil, fmt.Errorf("Error starting process: %s", err)
 	}
 
+	go func() {
+		err := p.Wait()
+		gg.services[name] = nil // Set out service to nil when it dies
+		if err != nil {
+			// Only log errors if we didn't kill it
+			if err.Error() != "signal: killed" {
+				log.WithFields(log.Fields{
+					"exec_location":    location,
+					"environment_vars": strings.Join(env, ", "),
+					"err":              err,
+				}).Error("Service errored out")
+				fmt.Println(name)
+				gg.AppendToLog(name, "Exiting... "+err.Error())
+			}
+		}
+	}()
+
 	// Wait for the process to start
 	time.Sleep(*timeout)
-
+	if p.ProcessState.Exited() {
+		return nil, fmt.Errorf("process %s already exited, check the logs for errors", name)
+	}
 	return p, nil
+
 }

@@ -34,10 +34,11 @@ func SetupConfig(configFilePath string) {
 			"err": err,
 		}).Warn("Couldn't get Gladius base")
 	}
-
 	// Add a default environment so that we can set the gladius base of our sub
 	// processes
 	ConfigOption("DefaultEnvironment", []string{"GLADIUSBASE=" + base})
+
+	ConfigOption("MaxLogLines", 1000) // Max number of log lines to keep in ram for each service
 
 	// Setup logging level
 	switch loglevel := viper.GetString("LogLevel"); loglevel {

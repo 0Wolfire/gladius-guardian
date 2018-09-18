@@ -112,9 +112,18 @@ func SetStartTimeoutHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *
 	}
 }
 
-func GetLogsHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *http.Request) {
+func GetOldLogsHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Get service name to stop it
-		ResponseHandler(w, r, "Not implemented", true, nil, gg.GetServicesStatus())
+		toReturn := make(map[string]([]string))
+		for name, fsl := range gg.serviceLogs {
+			toReturn[name] = fsl.LogLines()
+		}
+		ResponseHandler(w, r, "Got logs", true, nil, toReturn)
+	}
+}
+
+func GetNewLogsWebSocketHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		gg.AddLogClient(w, r)
 	}
 }

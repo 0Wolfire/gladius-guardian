@@ -50,11 +50,13 @@ func run() {
 	r.HandleFunc("/", guardian.IndexHandler)
 
 	// Guardian related endpoints
+	r.HandleFunc("/service/stats", guardian.GetServicesHandler(gg)).Methods("GET")
 	r.HandleFunc("/service/start", guardian.StartServiceHandler(gg)).Methods("POST")
 	r.HandleFunc("/service/stop", guardian.StopServiceHandler(gg)).Methods("POST")
 	r.HandleFunc("/service/stop/all", guardian.StopAllServiceHandler(gg)).Methods("POST")
 	r.HandleFunc("/service/set_timeout", guardian.SetStartTimeoutHandler(gg)).Methods("POST")
-	r.HandleFunc("/service/logs", guardian.GetLogsHandler(gg)).Methods("GET")
+	r.HandleFunc("/service/logs", guardian.GetOldLogsHandler(gg)).Methods("GET")
+	r.HandleFunc("/service/logs/ws", guardian.GetNewLogsWebSocketHandler(gg))
 
 	// Setup a custom server so we can gracefully stop later
 	srv := &http.Server{
