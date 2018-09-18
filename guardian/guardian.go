@@ -19,7 +19,7 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin:     func(r *http.Request) bool { return true },
+	CheckOrigin:     func(r *http.Request) bool { return true }, // So we can run locally
 }
 
 // New returns a new GladiusGuardian object with the specified spawn timeout
@@ -29,6 +29,7 @@ func New() *GladiusGuardian {
 		registeredServices: make(map[string]*serviceSettings),
 		services:           make(map[string]*exec.Cmd),
 		serviceLogs:        make(map[string]*FixedSizeLog),
+		serviceWebSockets:  make(map[string][]*websocket.Conn),
 	}
 }
 
@@ -39,6 +40,7 @@ type GladiusGuardian struct {
 	registeredServices map[string]*serviceSettings
 	services           map[string]*exec.Cmd
 	serviceLogs        map[string]*FixedSizeLog
+	serviceWebSockets  map[string][]*websocket.Conn
 }
 
 type serviceSettings struct {
@@ -68,6 +70,9 @@ func newServiceStatus(p *exec.Cmd) *serviceStatus {
 }
 
 func (gg *GladiusGuardian) RegisterService(name, execLocation string, env []string) {
+	gg.mux.Lock()
+	defer gg.mux.Unlock()
+
 	log.WithFields(log.Fields{
 		"service_name":     name,
 		"exec_location":    execLocation,
@@ -75,6 +80,17 @@ func (gg *GladiusGuardian) RegisterService(name, execLocation string, env []stri
 	}).Debug("Registered new service")
 	gg.registeredServices[name] = &serviceSettings{env: env, execName: execLocation}
 	gg.services[name] = nil // So it's still returned when we list services
+
+	// Start websocket watcher
+	gg.serviceWebSockets[name] = make([]*websocket.Conn, 0)
+}
+
+func (gg *GladiusGuardian) updateWebsocketLog(serviceName, logLine string) {
+	gg.mux.Lock()
+	defer gg.mux.Unlock()
+	for _, conn := range gg.serviceWebSockets[serviceName] {
+		conn.WriteMessage(websocket.TextMessage, []byte(logLine))
+	}
 }
 
 func (gg *GladiusGuardian) SetTimeout(t *time.Duration) {
@@ -180,22 +196,17 @@ func (gg *GladiusGuardian) StopService(name string) error {
 	return nil
 }
 
-func (gg *GladiusGuardian) AddLogClient(w http.ResponseWriter, r *http.Request) {
+func (gg *GladiusGuardian) AddLogClient(serviceName string, w http.ResponseWriter, r *http.Request) {
+	gg.mux.Lock()
+	defer gg.mux.Unlock()
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Warn(err)
 		return
 	}
-	go func() {
-		for {
-			time.Sleep(1 * time.Second)
 
-			if err := conn.WriteMessage(websocket.TextMessage, []byte("testing123")); err != nil {
-				log.Println(err)
-				return
-			}
-		}
-	}()
+	gg.serviceWebSockets[serviceName] = append(gg.serviceWebSockets[serviceName], conn)
 }
 
 func (gg *GladiusGuardian) AppendToLog(serviceName, line string) {
@@ -203,6 +214,7 @@ func (gg *GladiusGuardian) AppendToLog(serviceName, line string) {
 		gg.serviceLogs[serviceName] = NewFixedSizeLog(viper.GetInt("MaxLogLines"))
 	}
 	gg.serviceLogs[serviceName].Append(line) // Add to our internal fixed size log
+	gg.updateWebsocketLog(serviceName, line)
 }
 
 func (gg *GladiusGuardian) checkTimeout() error {
@@ -264,7 +276,6 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 					"environment_vars": strings.Join(env, ", "),
 					"err":              err,
 				}).Error("Service errored out")
-				fmt.Println(name)
 				gg.AppendToLog(name, "Exiting... "+err.Error())
 			}
 		}
@@ -272,8 +283,10 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 
 	// Wait for the process to start
 	time.Sleep(*timeout)
-	if p.ProcessState.Exited() {
-		return nil, fmt.Errorf("process %s already exited, check the logs for errors", name)
+	if p.ProcessState != nil { // ProcessState is only non-nil if p.Wait() concludes
+		if p.ProcessState.Exited() {
+			return nil, fmt.Errorf("process %s already exited, check the logs for errors", name)
+		}
 	}
 	return p, nil
 

@@ -56,7 +56,7 @@ func run() {
 	r.HandleFunc("/service/stop/all", guardian.StopAllServiceHandler(gg)).Methods("POST")
 	r.HandleFunc("/service/set_timeout", guardian.SetStartTimeoutHandler(gg)).Methods("POST")
 	r.HandleFunc("/service/logs", guardian.GetOldLogsHandler(gg)).Methods("GET")
-	r.HandleFunc("/service/logs/ws", guardian.GetNewLogsWebSocketHandler(gg))
+	r.HandleFunc("/service/logs/ws/{service_name}", guardian.GetNewLogsWebSocketHandler(gg))
 
 	// Setup a custom server so we can gracefully stop later
 	srv := &http.Server{

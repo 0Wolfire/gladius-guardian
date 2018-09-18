@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/buger/jsonparser"
+	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 )
 
@@ -124,6 +125,10 @@ func GetOldLogsHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *http.
 
 func GetNewLogsWebSocketHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		gg.AddLogClient(w, r)
+		vars := mux.Vars(r)
+		sn := vars["service_name"]
+		if sn != "" {
+			gg.AddLogClient(sn, w, r)
+		}
 	}
 }
