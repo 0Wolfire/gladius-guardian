@@ -35,6 +35,12 @@
   version = "v1.6.2"
 
 [[projects]]
+  name = "github.com/gorilla/websocket"
+  packages = ["."]
+  revision = "66b9c49e59c6c48f0ffce28c2d8b8a5678502c6d"
+  version = "v1.4.0"
+
+[[projects]]
   name = "github.com/hashicorp/errwrap"
   packages = ["."]
   revision = "8a6fb523712970c966eefc6b39ed2c5e74880354"
@@ -149,7 +155,7 @@
     "windows/svc/eventlog",
     "windows/svc/mgr"
   ]
-  revision = "d0be0721c37eeb5299f245a996a483160fc36940"
+  revision = "ee1b12c67af419cf5a9be3bdbeea7fc1c5f32f11"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -173,6 +179,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "03f20a96b836703df5deea45544b726f7cbf35a2084b12124666bd0cf6df960b"
+  inputs-digest = "3ba0960b56826daa90f4a4f8060aae9cf3ad8200e8c321763aa915aa907ea03d"
   solver-name = "gps-cdcl"
   solver-version = 1
