@@ -100,9 +100,13 @@ func (gg *GladiusGuardian) SetTimeout(t *time.Duration) {
 	gg.spawnTimeout = t
 }
 
-func (gg *GladiusGuardian) GetServicesStatus() map[string]*serviceStatus {
+func (gg *GladiusGuardian) GetServicesStatus(name string) map[string]*serviceStatus {
 	gg.mux.Lock()
 	defer gg.mux.Unlock()
+
+	if name == "all" || name == "" {
+
+	}
 
 	services := make(map[string]*serviceStatus)
 	for serviceName, service := range gg.services {
@@ -112,33 +116,33 @@ func (gg *GladiusGuardian) GetServicesStatus() map[string]*serviceStatus {
 	return services
 }
 
-func (gg *GladiusGuardian) StopAll() error {
+func (gg *GladiusGuardian) StopService(name string) error {
 	gg.mux.Lock()
 	defer gg.mux.Unlock()
 
-	var result *multierror.Error
-
-	for sName, s := range gg.services {
-		if s != nil {
-			err := s.Process.Kill()
+	if name == "all" || name == "" {
+		var result *multierror.Error
+		for sName := range gg.registeredServices {
+			err := gg.stopServiceInternal(sName)
 			if err != nil {
 				result = multierror.Append(result, fmt.Errorf("error stopping service %s: %s", sName, err))
 			}
 			continue
 		}
-		result = multierror.Append(result, fmt.Errorf("service not running: %s", sName))
+		err := result.ErrorOrNil()
+		if err != nil {
+			log.WithFields(log.Fields{
+				"err": err,
+			}).Warn("Error stoping one or more service")
+		}
+		return result.ErrorOrNil()
 	}
-	err := result.ErrorOrNil()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Warn("Error stoping one or more service")
-	}
-	return result.ErrorOrNil()
+
+	return gg.stopServiceInternal(name)
 }
 
 func (gg *GladiusGuardian) StartService(name string, env []string) error {
-	if name == "all" {
+	if name == "all" || name == "" {
 		var result *multierror.Error
 		for sName := range gg.registeredServices {
 			err := gg.startServiceInternal(sName, env)
@@ -186,14 +190,7 @@ func (gg *GladiusGuardian) startServiceInternal(name string, env []string) error
 	return nil
 }
 
-func (gg *GladiusGuardian) StopService(name string) error {
-	gg.mux.Lock()
-	defer gg.mux.Unlock()
-
-	if name == "all" {
-		return gg.StopAll()
-	}
-
+func (gg *GladiusGuardian) stopServiceInternal(name string) error {
 	serviceSettings, ok := gg.registeredServices[name]
 	if !ok {
 		return errors.New("attempted to stop unregistered service")

@@ -16,7 +16,10 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 
 func GetServicesHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ResponseHandler(w, r, "Got service status", true, nil, gg.GetServicesStatus())
+		vars := mux.Vars(r)
+		sn := vars["service_name"]
+
+		ResponseHandler(w, r, "Got service status", true, nil, gg.GetServicesStatus(sn))
 	}
 }
 
@@ -36,10 +39,6 @@ func ServiceStateHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *htt
 		// Get the service name from the URL
 		vars := mux.Vars(r)
 		sn := vars["service_name"]
-		if sn == "" {
-			ErrorHandler(w, r, "Need 'service_name' in URL", err, http.StatusBadRequest)
-			return
-		}
 
 		environmentVars := make([]string, 0)
 
@@ -68,15 +67,15 @@ func ServiceStateHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *htt
 				ErrorHandler(w, r, "Error starting service", err, http.StatusBadRequest)
 				return
 			}
-			ResponseHandler(w, r, "Attempted to start service, check logs to make sure it didn't fail after timeout", true, nil, gg.GetServicesStatus())
+			ResponseHandler(w, r, "Attempted to start service, check logs to make sure it didn't fail after timeout", true, nil, gg.GetServicesStatus(sn))
 		} else {
 			err = gg.StopService(sn)
 			if err != nil {
 				ErrorHandler(w, r, "Error stoping service", err, http.StatusBadRequest)
 				return
 			}
-
-			ResponseHandler(w, r, "Stopped Service", true, nil, gg.GetServicesStatus())
+			time.Sleep(200 * time.Millisecond)
+			ResponseHandler(w, r, "Stopped Service", true, nil, gg.GetServicesStatus(sn))
 		}
 
 	}

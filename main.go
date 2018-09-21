@@ -77,7 +77,7 @@ func run() {
 
 	<-c // Block until we receive our signal.
 
-	gg.StopAll()
+	gg.StopService("all")
 	stopHTTPServer(srv)
 }
 
