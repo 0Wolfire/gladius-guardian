@@ -27,4 +27,11 @@ ControldExecutable = "gladius-controld"
 # Defualt environment variables for each executable, can also be specified when starting the service in the JSON body of the request.
 DefaultEnvironment = ["GLADIUSBASE=your/base/here"]
 
+# Set log level
+LogLevel = "debug"
+
+# How many lines to keep of service logs before old entries are deleted
+MaxLogLines = 1000
 ```
+
+These can also be overridden with environment variables like: `GUARDIAN_CONFIGVAR=value`
