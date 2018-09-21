@@ -20,16 +20,24 @@ func GetServicesHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *http
 	}
 }
 
-func StartServiceHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *http.Request) {
+func ServiceStateHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Get service name, optionally environment variables
-		vals, err := getJSONFields(w, r, "service_name", "environment_vars")
+		// Get desired run state, optionally environment variables
+		vals, err := getJSONFields(w, r, "running", "environment_vars")
 		if err != nil {
 			ErrorHandler(w, r, "Couldn't parse body", err, http.StatusBadRequest)
 			return
 		}
-		if _, ok := vals["service_name"]; !ok {
-			ErrorHandler(w, r, "Need 'service_name' in request", err, http.StatusBadRequest)
+		if _, ok := vals["running"]; !ok {
+			ErrorHandler(w, r, "Need 'running' in request", err, http.StatusBadRequest)
+			return
+		}
+
+		// Get the service name from the URL
+		vars := mux.Vars(r)
+		sn := vars["service_name"]
+		if sn == "" {
+			ErrorHandler(w, r, "Need 'service_name' in URL", err, http.StatusBadRequest)
 			return
 		}
 
@@ -46,48 +54,31 @@ func StartServiceHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *htt
 			})
 		}
 
-		err = gg.StartService(string(vals["service_name"]), environmentVars)
+		// Parse the run state they want
+		setRunning, err := strconv.ParseBool(string(vals["running"]))
 		if err != nil {
-			ErrorHandler(w, r, "Error starting service", err, http.StatusBadRequest)
+			ErrorHandler(w, r, "Could not parse running as type bool", err, http.StatusBadRequest)
 			return
 		}
 
-		ResponseHandler(w, r, "Attempted to start service", true, nil, gg.GetServicesStatus())
-	}
-}
+		// Start or stop the service
+		if setRunning {
+			err = gg.StartService(sn, environmentVars)
+			if err != nil {
+				ErrorHandler(w, r, "Error starting service", err, http.StatusBadRequest)
+				return
+			}
+			ResponseHandler(w, r, "Attempted to start service, check logs to make sure it didn't fail after timeout", true, nil, gg.GetServicesStatus())
+		} else {
+			err = gg.StopService(sn)
+			if err != nil {
+				ErrorHandler(w, r, "Error stoping service", err, http.StatusBadRequest)
+				return
+			}
 
-func StopServiceHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Get service name to stop it
-		vals, err := getJSONFields(w, r, "service_name")
-		if err != nil {
-			ErrorHandler(w, r, "Couldn't parse body", err, http.StatusBadRequest)
-			return
-		}
-		if _, ok := vals["service_name"]; !ok {
-			ErrorHandler(w, r, "Need 'service_name' in request", err, http.StatusBadRequest)
-			return
-		}
-
-		err = gg.StopService(string(vals["service_name"]))
-		if err != nil {
-			ErrorHandler(w, r, "Error stoping service", err, http.StatusBadRequest)
-			return
+			ResponseHandler(w, r, "Stopped Service", true, nil, gg.GetServicesStatus())
 		}
 
-		ResponseHandler(w, r, "Stopped Service", true, nil, gg.GetServicesStatus())
-	}
-}
-
-func StopAllServiceHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		err := gg.StopAll()
-		if err != nil {
-			ErrorHandler(w, r, "Error stoping service", err, http.StatusBadRequest)
-			return
-		}
-
-		ResponseHandler(w, r, "Stopped all services", true, nil, gg.GetServicesStatus())
 	}
 }
 
@@ -109,7 +100,9 @@ func SetStartTimeoutHandler(gg *GladiusGuardian) func(w http.ResponseWriter, r *
 		}
 		dur := time.Duration(t) * time.Second
 		gg.SetTimeout(&dur)
-		ResponseHandler(w, r, "Set timeout", true, nil, gg.GetServicesStatus())
+		response := make(map[string]int)
+		response["timeout"] = t
+		ResponseHandler(w, r, "Set timeout", true, nil, response)
 	}
 }
 

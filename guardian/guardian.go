@@ -121,7 +121,10 @@ func (gg *GladiusGuardian) StopAll() error {
 	for sName, s := range gg.services {
 		if s != nil {
 			err := s.Process.Kill()
-			result = multierror.Append(result, fmt.Errorf("error stopping service %s: %s", sName, err))
+			if err != nil {
+				result = multierror.Append(result, fmt.Errorf("error stopping service %s: %s", sName, err))
+			}
+			continue
 		}
 		result = multierror.Append(result, fmt.Errorf("service not running: %s", sName))
 	}
@@ -135,6 +138,21 @@ func (gg *GladiusGuardian) StopAll() error {
 }
 
 func (gg *GladiusGuardian) StartService(name string, env []string) error {
+	if name == "all" {
+		var result *multierror.Error
+		for sName := range gg.registeredServices {
+			err := gg.startServiceInternal(sName, env)
+			if err != nil {
+				result = multierror.Append(result, fmt.Errorf("error starting service %s: %s", sName, err))
+			}
+		}
+		return result.ErrorOrNil()
+	}
+
+	return gg.startServiceInternal(name, env)
+}
+
+func (gg *GladiusGuardian) startServiceInternal(name string, env []string) error {
 	gg.mux.Lock()
 	defer gg.mux.Unlock()
 
@@ -171,6 +189,10 @@ func (gg *GladiusGuardian) StartService(name string, env []string) error {
 func (gg *GladiusGuardian) StopService(name string) error {
 	gg.mux.Lock()
 	defer gg.mux.Unlock()
+
+	if name == "all" {
+		return gg.StopAll()
+	}
 
 	serviceSettings, ok := gg.registeredServices[name]
 	if !ok {
