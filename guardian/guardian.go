@@ -105,15 +105,17 @@ func (gg *GladiusGuardian) GetServicesStatus(name string) map[string]*serviceSta
 	defer gg.mux.Unlock()
 
 	if name == "all" || name == "" {
-
+		services := make(map[string]*serviceStatus)
+		for serviceName, service := range gg.services {
+			services[serviceName] = newServiceStatus(service)
+		}
+		return services
 	}
 
 	services := make(map[string]*serviceStatus)
-	for serviceName, service := range gg.services {
-		services[serviceName] = newServiceStatus(service)
-	}
-
+	services[name] = newServiceStatus(gg.services[name])
 	return services
+
 }
 
 func (gg *GladiusGuardian) StopService(name string) error {
