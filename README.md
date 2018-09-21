@@ -2,11 +2,9 @@
 
 Watchdog service for managing the various Gladius processes.
 
-## Endpoints
-
-### GET Requests
-
-### POST Requests
+## Docs
+Check out our pretty slate docs
+[here](https://gladiusio.github.io/gladius-guardian-api-docs/#introduction)
 
 ## Service Manager Setup
 
