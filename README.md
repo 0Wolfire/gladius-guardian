@@ -17,3 +17,14 @@ Check out our pretty slate docs
 **Note for macOS users:** The installed version of the Gladius Guardian service
 doesn't use this functionality, it uses a custom service file to run this as a
 user service rather than a system one.
+
+## Config file example
+```toml
+# Default executable locations
+NetworkdExecutable = "gladius-networkd"
+ControldExecutable = "gladius-controld"
+
+# Defualt environment variables for each executable, can also be specified when starting the service in the JSON body of the request.
+DefaultEnvironment = ["GLADIUSBASE=your/base/here"]
+
+```
