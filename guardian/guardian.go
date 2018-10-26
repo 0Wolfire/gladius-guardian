@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/gladiusio/gladius-guardian/win"
 	"github.com/gorilla/websocket"
 	multierror "github.com/hashicorp/go-multierror"
 	log "github.com/sirupsen/logrus"
@@ -204,7 +206,30 @@ func (gg *GladiusGuardian) stopServiceInternal(name string) error {
 		return errors.New("service is not running so can not stop")
 	}
 
-	err := service.Process.Kill()
+	var err error
+
+	// windows we need to find the correct process first, then kill it
+	if runtime.GOOS == "windows" {
+		processID, err := win.GetProcessWindows("gladius-" + name + ".exe")
+		if err != nil {
+			fmt.Print("GET PROCESS ID: ", err)
+		}
+		process, err := os.FindProcess(processID)
+		if err != nil {
+			fmt.Print("LOAD PROCESS: ", err)
+		}
+
+		fmt.Printf("\nFOUND THE PROCESS %s: %d\n", name, processID)
+		fmt.Printf("\nKILLING THE PROCESS %s: %d\n", name, processID)
+
+		err = process.Kill()
+		if err != nil {
+			fmt.Print("KILL PROCESS: ", err)
+		}
+	} else {
+		err = service.Process.Kill()
+	}
+
 	if err != nil {
 		log.WithFields(log.Fields{
 			"service_name":     name,

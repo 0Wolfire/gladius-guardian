@@ -54,7 +54,7 @@ require (
 	github.com/zmb3/gogetdoc v0.0.0-20180522031303-10095872a7c5 // indirect
 	golang.org/x/crypto v0.0.0-20180910181607-0e37d006457b
 	golang.org/x/lint v0.0.0-20181023015148-c2de83ec1785 // indirect
-	golang.org/x/sys v0.0.0-20180918153733-ee1b12c67af4
+	golang.org/x/sys v0.0.0-20181026144532-2772b66316d2
 	golang.org/x/text v0.3.0
 	gopkg.in/alecthomas/kingpin.v3-unstable v3.0.0-20180810215634-df19058c872c // indirect
 	gopkg.in/yaml.v2 v2.2.1
