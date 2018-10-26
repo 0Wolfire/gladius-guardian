@@ -1,18 +1,15 @@
 package guardian
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/gladiusio/gladius-guardian/win"
 	"github.com/gorilla/websocket"
 	multierror "github.com/hashicorp/go-multierror"
 	log "github.com/sirupsen/logrus"
@@ -183,17 +180,9 @@ func (gg *GladiusGuardian) startServiceInternal(name string, env []string) error
 		return err
 	}
 
-	// windows needs to spawn processes differently because ofc it does :(
-	if runtime.GOOS == "windows" {
-		p, err := gg.spawnWindowsProcess(name, serviceSettings.execName, serviceSettings.env, gg.spawnTimeout)
-		if err != nil {
-			return err
-		}
-	} else {
-		p, err := gg.spawnProcess(name, serviceSettings.execName, serviceSettings.env, gg.spawnTimeout)
-		if err != nil {
-			return err
-		}
+	p, err := gg.spawnProcess(name, serviceSettings.execName, serviceSettings.env, gg.spawnTimeout)
+	if err != nil {
+		return err
 	}
 
 	gg.services[name] = p
@@ -273,153 +262,4 @@ func (gg *GladiusGuardian) checkTimeout() error {
 		return errors.New("spawn timeout not set, please set it before a process is spawned")
 	}
 	return nil
-}
-
-func (gg *GladiusGuardian) spawnWindowsProcess(name, location string, env []string, timeout *time.Duration) (*exec.Cmd, error) {
-	p := exec.Command("cmd.exe", "/C", "start", location)
-	p.Env = append(os.Environ(), env...)
-
-	// Create standard err and out pipes
-	stdOut, err := p.StdoutPipe()
-	if err != nil {
-		return nil, fmt.Errorf("Error creating StdoutPipe for command: %s", err)
-	}
-	stdErr, err := p.StderrPipe()
-	if err != nil {
-		return nil, fmt.Errorf("Error creating StderrPipe for command: %s", err)
-	}
-
-	// Pipe stdout to the logs
-	scanner := bufio.NewScanner(stdOut)
-	stdErrScanner := bufio.NewScanner(stdErr)
-	go func() {
-		defer stdOut.Close()
-		for scanner.Scan() {
-			gg.AppendToLog(name, scanner.Text())
-		}
-	}()
-	go func() {
-		defer stdErr.Close()
-		for stdErrScanner.Scan() {
-			gg.AppendToLog(name, stdErrScanner.Text())
-		}
-	}()
-
-	// Start the command
-	err = p.Start()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"exec_location":    location,
-			"environment_vars": strings.Join(env, ", "),
-			"err":              err,
-		}).Warn("Couldn't spawn process")
-		return nil, fmt.Errorf("\nError starting process: %s", err)
-	}
-
-	// Timeout test, can we find the process before the timeout?
-	time.Sleep(*timeout)
-	process, err := GetProcess(location + ".exe")
-	if err != nil {
-		return nil, fmt.Errorf("could not finding process %s or failed to start before timeout, check the logs for errors", name)
-	}
-
-	// when process exits, call this
-	go func() {
-		_, err := process.Wait()
-		gg.services[name] = nil // Set out service to nil when it dies
-		if err != nil {
-			// Only log errors if we didn't kill it
-			if err.Error() != "signal: killed" {
-				log.WithFields(log.Fields{
-					"exec_location":    location,
-					"environment_vars": strings.Join(env, ", "),
-					"err":              err,
-				}).Error("Service errored out")
-				gg.AppendToLog(name, "Exiting... "+err.Error())
-			}
-		}
-	}()
-
-	return p, nil
-}
-
-func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, timeout *time.Duration) (*exec.Cmd, error) {
-	p := exec.Command(location)
-	p.Env = env
-
-	// Create standard err and out pipes
-	stdOut, err := p.StdoutPipe()
-	if err != nil {
-		return nil, fmt.Errorf("Error creating StdoutPipe for command: %s", err)
-	}
-	stdErr, err := p.StderrPipe()
-	if err != nil {
-		return nil, fmt.Errorf("Error creating StderrPipe for command: %s", err)
-	}
-
-	// Read both of those in
-	scanner := bufio.NewScanner(stdOut)
-	stdErrScanner := bufio.NewScanner(stdErr)
-	go func() {
-		defer stdOut.Close()
-		for scanner.Scan() {
-			gg.AppendToLog(name, scanner.Text())
-		}
-	}()
-	go func() {
-		defer stdErr.Close()
-		for stdErrScanner.Scan() {
-			gg.AppendToLog(name, stdErrScanner.Text())
-		}
-	}()
-
-	// Start the command
-	err = p.Start()
-	if err != nil {
-		log.WithFields(log.Fields{
-			"exec_location":    location,
-			"environment_vars": strings.Join(env, ", "),
-			"err":              err,
-		}).Warn("Couldn't spawn process")
-		return nil, fmt.Errorf("Error starting process: %s", err)
-	}
-
-	go func() {
-		err := p.Wait()
-		gg.services[name] = nil // Set out service to nil when it dies
-		if err != nil {
-			// Only log errors if we didn't kill it
-			if err.Error() != "signal: killed" {
-				log.WithFields(log.Fields{
-					"exec_location":    location,
-					"environment_vars": strings.Join(env, ", "),
-					"err":              err,
-				}).Error("Service errored out")
-				gg.AppendToLog(name, "Exiting... "+err.Error())
-			}
-		}
-	}()
-
-	// Wait for the process to start
-	time.Sleep(*timeout)
-	if p.ProcessState != nil { // ProcessState is only non-nil if p.Wait() concludes
-		if p.ProcessState.Exited() {
-			return nil, fmt.Errorf("process %s already exited, check the logs for errors", name)
-		}
-	}
-	return p, nil
-}
-
-// GetProcess - Returns process obj (Windows only)
-func GetProcess(name string) (*os.Process, error) {
-	processID, err := win.GetProcessWindows(name)
-	if err != nil {
-		return nil, fmt.Errorf("error getting process id")
-	}
-	process, err := os.FindProcess(processID)
-	if err != nil {
-		return nil, fmt.Errorf("error loading process")
-	}
-
-	return process, nil
 }
