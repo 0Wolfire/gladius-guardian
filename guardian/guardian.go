@@ -202,7 +202,6 @@ func (gg *GladiusGuardian) stopServiceInternal(name string) error {
 		return errors.New("attempted to stop unregistered service")
 	}
 
-	// service gets set to nil here so cant find
 	service := gg.services[name]
 	if service == nil {
 		return errors.New("service is not running so can not stop")
@@ -217,8 +216,8 @@ func (gg *GladiusGuardian) stopServiceInternal(name string) error {
 			fmt.Printf("ERROR GETTING PROCESSES")
 		}
 
-		fmt.Printf("\nFOUND THE PROCESS %s: \n", name)
-		fmt.Printf("\nKILLING THE PROCESS %s: \n", name)
+		fmt.Printf("\nFOUND THE PROCESS: %s ", name)
+		fmt.Printf("\nKILLING THE PROCESS: %s \n", name)
 
 		err = process.Kill()
 		if err != nil {
@@ -321,32 +320,33 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 		return nil, fmt.Errorf("\nError starting process: %s", err)
 	}
 
-	// go func() {
-	// 	_, err := process.Wait()
-	// 	fmt.Printf(name, "EXITED!")
-	// 	gg.services[name] = nil // Set out service to nil when it dies
-	// 	if err != nil {
-	// 		// Only log errors if we didn't kill it
-	// 		if err.Error() != "signal: killed" {
-	// 			log.WithFields(log.Fields{
-	// 				"exec_location":    location,
-	// 				"environment_vars": strings.Join(env, ", "),
-	// 				"err":              err,
-	// 			}).Error("Service errored out")
-	// 			gg.AppendToLog(name, "Exiting... "+err.Error())
-	// 		}
-	// 	}
-	// }()
-
 	// Timeout test, can we find the process before the timeout?
 	time.Sleep(*timeout)
-	_, err = GetProcess(location + ".exe")
+	process, err := GetProcess(location + ".exe")
 	if err != nil {
 		fmt.Printf("ERROR GETTING PROCESSES")
 		return nil, fmt.Errorf("could not finding process %s or failed to start before timeout, check the logs for errors", name)
 	}
-	return p, nil
 
+	// when process exits, call this
+	go func() {
+		_, err := process.Wait()
+		fmt.Println(name, " EXITED!")
+		gg.services[name] = nil // Set out service to nil when it dies
+		if err != nil {
+			// Only log errors if we didn't kill it
+			if err.Error() != "signal: killed" {
+				log.WithFields(log.Fields{
+					"exec_location":    location,
+					"environment_vars": strings.Join(env, ", "),
+					"err":              err,
+				}).Error("Service errored out")
+				gg.AppendToLog(name, "Exiting... "+err.Error())
+			}
+		}
+	}()
+
+	return p, nil
 }
 
 // GetProcess - Returns process obj (Windows only)
