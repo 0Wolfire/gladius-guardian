@@ -1,6 +1,7 @@
 package guardian
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"net/http"
@@ -201,6 +202,7 @@ func (gg *GladiusGuardian) stopServiceInternal(name string) error {
 		return errors.New("attempted to stop unregistered service")
 	}
 
+	// service gets set to nil here so cant find
 	service := gg.services[name]
 	if service == nil {
 		return errors.New("service is not running so can not stop")
@@ -210,17 +212,14 @@ func (gg *GladiusGuardian) stopServiceInternal(name string) error {
 
 	// windows we need to find the correct process first, then kill it
 	if runtime.GOOS == "windows" {
-		processID, err := win.GetProcessWindows("gladius-" + name + ".exe")
+
+		process, err := GetProcess("gladius-" + name + ".exe")
 		if err != nil {
-			fmt.Print("GET PROCESS ID: ", err)
-		}
-		process, err := os.FindProcess(processID)
-		if err != nil {
-			fmt.Print("LOAD PROCESS: ", err)
+			fmt.Printf("ERROR GETTING PROCESSES")
 		}
 
-		fmt.Printf("\nFOUND THE PROCESS %s: %d\n", name, processID)
-		fmt.Printf("\nKILLING THE PROCESS %s: %d\n", name, processID)
+		fmt.Printf("\nFOUND THE PROCESS %s: \n", name)
+		fmt.Printf("\nKILLING THE PROCESS %s: \n", name)
 
 		err = process.Kill()
 		if err != nil {
@@ -282,36 +281,36 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 		// location = `C:\Program Files (x86)\Gladius Node\` + location + ".exe"
 		p = exec.Command("cmd.exe", "/C", "start", location)
 	}
-	// p.Env = env
+	// p.Env = env THIS MAKES IT CRASH HAHAHAHAHAHHA
 
 	// Create standard err and out pipes
-	// stdOut, err := p.StdoutPipe()
-	// if err != nil {
-	// 	return nil, fmt.Errorf("Error creating StdoutPipe for command: %s", err)
-	// }
-	// stdErr, err := p.StderrPipe()
-	// if err != nil {
-	// 	return nil, fmt.Errorf("Error creating StderrPipe for command: %s", err)
-	// }
+	stdOut, err := p.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("Error creating StdoutPipe for command: %s", err)
+	}
+	stdErr, err := p.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("Error creating StderrPipe for command: %s", err)
+	}
 
 	// Pipe stdout to the logs
-	// scanner := bufio.NewScanner(stdOut)
-	// stdErrScanner := bufio.NewScanner(stdErr)
-	// go func() {
-	// 	defer stdOut.Close()
-	// 	for scanner.Scan() {
-	// 		gg.AppendToLog(name, scanner.Text())
-	// 	}
-	// }()
-	// go func() {
-	// 	defer stdErr.Close()
-	// 	for stdErrScanner.Scan() {
-	// 		gg.AppendToLog(name, stdErrScanner.Text())
-	// 	}
-	// }()
+	scanner := bufio.NewScanner(stdOut)
+	stdErrScanner := bufio.NewScanner(stdErr)
+	go func() {
+		defer stdOut.Close()
+		for scanner.Scan() {
+			gg.AppendToLog(name, scanner.Text())
+		}
+	}()
+	go func() {
+		defer stdErr.Close()
+		for stdErrScanner.Scan() {
+			gg.AppendToLog(name, stdErrScanner.Text())
+		}
+	}()
 
 	// Start the command
-	err := p.Start()
+	err = p.Start()
 	fmt.Printf("Starting process: %s\n", location)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -322,29 +321,52 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 		return nil, fmt.Errorf("\nError starting process: %s", err)
 	}
 
-	// go func() {
-	// 	err := p.Wait()
-	// 	gg.services[name] = nil // Set out service to nil when it dies
-	// 	if err != nil {
-	// 		// Only log errors if we didn't kill it
-	// 		if err.Error() != "signal: killed" {
-	// 			log.WithFields(log.Fields{
-	// 				"exec_location":    location,
-	// 				"environment_vars": strings.Join(env, ", "),
-	// 				"err":              err,
-	// 			}).Error("Service errored out")
-	// 			gg.AppendToLog(name, "Exiting... "+err.Error())
-	// 		}
-	// 	}
-	// }()
+	process, err := GetProcess("gladius-" + name + ".exe")
+	if err != nil {
+		fmt.Printf("ERROR GETTING PROCESSES")
+	}
 
-	// Wait for the process to start
-	// time.Sleep(*timeout)
-	// if p.ProcessState != nil { // ProcessState is only non-nil if p.Wait() concludes
-	// 	if p.ProcessState.Exited() {
-	// 		return nil, fmt.Errorf("process %s already exited, check the logs for errors", name)
-	// 	}
-	// }
+	var state *os.ProcessState
+
+	go func() {
+		state, err := process.Wait()
+		gg.services[name] = nil // Set out service to nil when it dies
+		if err != nil {
+			// Only log errors if we didn't kill it
+			if err.Error() != "signal: killed" {
+				log.WithFields(log.Fields{
+					"exec_location":    location,
+					"environment_vars": strings.Join(env, ", "),
+					"err":              err,
+				}).Error("Service errored out")
+				gg.AppendToLog(name, "Exiting... "+err.Error())
+			}
+		}
+	}()
+
+	// Wait for the process to start (timeout)
+	time.Sleep(*timeout)
+	if state != nil { // ProcessState is only non-nil if p.Wait() concludes
+		if state.exited() {
+			return nil, fmt.Errorf("process %s already exited, check the logs for errors", name)
+		}
+	}
 	return p, nil
 
+}
+
+// GetProcess - Returns process obj (Windows only)
+func GetProcess(name string) (*os.Process, error) {
+	processID, err := win.GetProcessWindows(name)
+	if err != nil {
+		fmt.Print("GET PROCESS ID: ", err)
+		return nil, err
+	}
+	process, err := os.FindProcess(processID)
+	if err != nil {
+		fmt.Print("LOAD PROCESS: ", err)
+		return nil, err
+	}
+
+	return process, nil
 }
