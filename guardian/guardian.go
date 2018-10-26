@@ -212,7 +212,6 @@ func (gg *GladiusGuardian) stopServiceInternal(name string) error {
 
 	// windows we need to find the correct process first, then kill it
 	if runtime.GOOS == "windows" {
-
 		process, err := GetProcess("gladius-" + name + ".exe")
 		if err != nil {
 			fmt.Printf("ERROR GETTING PROCESSES")
@@ -278,10 +277,11 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 
 	//specifically for windows
 	if runtime.GOOS == "windows" {
-		// location = `C:\Program Files (x86)\Gladius Node\` + location + ".exe"
+		// location = `C:\Program Files (x86)\Gladius Node \` + location + ".exe"
 		p = exec.Command("cmd.exe", "/C", "start", location)
 	}
-	// p.Env = env THIS MAKES IT CRASH HAHAHAHAHAHHA
+
+	p.Env = append(os.Environ(), env...)
 
 	// Create standard err and out pipes
 	stdOut, err := p.StdoutPipe()
@@ -321,35 +321,29 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 		return nil, fmt.Errorf("\nError starting process: %s", err)
 	}
 
-	process, err := GetProcess("gladius-" + name + ".exe")
+	// go func() {
+	// 	_, err := process.Wait()
+	// 	fmt.Printf(name, "EXITED!")
+	// 	gg.services[name] = nil // Set out service to nil when it dies
+	// 	if err != nil {
+	// 		// Only log errors if we didn't kill it
+	// 		if err.Error() != "signal: killed" {
+	// 			log.WithFields(log.Fields{
+	// 				"exec_location":    location,
+	// 				"environment_vars": strings.Join(env, ", "),
+	// 				"err":              err,
+	// 			}).Error("Service errored out")
+	// 			gg.AppendToLog(name, "Exiting... "+err.Error())
+	// 		}
+	// 	}
+	// }()
+
+	// Timeout test, can we find the process before the timeout?
+	time.Sleep(*timeout)
+	_, err = GetProcess(location + ".exe")
 	if err != nil {
 		fmt.Printf("ERROR GETTING PROCESSES")
-	}
-
-	var state *os.ProcessState
-
-	go func() {
-		state, err := process.Wait()
-		gg.services[name] = nil // Set out service to nil when it dies
-		if err != nil {
-			// Only log errors if we didn't kill it
-			if err.Error() != "signal: killed" {
-				log.WithFields(log.Fields{
-					"exec_location":    location,
-					"environment_vars": strings.Join(env, ", "),
-					"err":              err,
-				}).Error("Service errored out")
-				gg.AppendToLog(name, "Exiting... "+err.Error())
-			}
-		}
-	}()
-
-	// Wait for the process to start (timeout)
-	time.Sleep(*timeout)
-	if state != nil { // ProcessState is only non-nil if p.Wait() concludes
-		if state.exited() {
-			return nil, fmt.Errorf("process %s already exited, check the logs for errors", name)
-		}
+		return nil, fmt.Errorf("could not finding process %s or failed to start before timeout, check the logs for errors", name)
 	}
 	return p, nil
 
