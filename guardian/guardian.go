@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -205,22 +204,7 @@ func (gg *GladiusGuardian) stopServiceInternal(name string) error {
 		return errors.New("service is not running so can not stop")
 	}
 
-	var err error
-
-	// windows we need to find the correct process first, then kill it
-	if runtime.GOOS == "windows" {
-		process, err := GetProcess("gladius-" + name + ".exe")
-		if err != nil {
-			return errors.New("could not find windows process")
-		}
-		err = process.Kill()
-		if err != nil {
-			return errors.New("could not kill windows process")
-		}
-	} else {
-		err = service.Process.Kill()
-	}
-
+	err := killProcess(gg, name)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"service_name":     name,

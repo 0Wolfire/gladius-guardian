@@ -1,9 +1,10 @@
-// +build darwin, linux
+// +build linux darwin
 
 package guardian
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -77,4 +78,13 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 		}
 	}
 	return p, nil
+}
+
+func killProcess(gg *GladiusGuardian, name string) error {
+	service := gg.services[name]
+	err := service.Process.Kill()
+	if err != nil {
+		return errors.New("could not kill unix process")
+	}
+	return nil
 }

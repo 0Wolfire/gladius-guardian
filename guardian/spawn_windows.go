@@ -2,6 +2,7 @@ package guardian
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -92,4 +93,17 @@ func GetProcess(name string) (*os.Process, error) {
 	}
 
 	return process, nil
+}
+
+func killProcess(gg *GladiusGuardian, name string) error {
+	process, err := GetProcess("gladius-" + name + ".exe")
+	if err != nil {
+		return errors.New("could not find windows process")
+	}
+	err = process.Kill()
+	if err != nil {
+		return errors.New("could not kill windows process")
+	}
+
+	return nil
 }
