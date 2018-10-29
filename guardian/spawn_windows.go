@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// spawnProcess - spawn a windows process
 func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, timeout *time.Duration) (*exec.Cmd, error) {
 	p := exec.Command("cmd.exe", "/C", "start", location)
 	p.Env = append(os.Environ(), env...)
@@ -61,7 +62,7 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 		return nil, fmt.Errorf("could not finding process %s or failed to start before timeout, check the logs for errors", name)
 	}
 
-	// when process exits, call this
+	// this waits for the process to end
 	go func() {
 		_, err := process.Wait()
 		gg.services[name] = nil // Set out service to nil when it dies
@@ -83,10 +84,12 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 
 // GetProcess - Returns process obj (Windows only)
 func GetProcess(name string) (*os.Process, error) {
+	// find process id by name
 	processID, err := win.GetProcessWindows(name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting process id")
 	}
+	// load the process up to return it
 	process, err := os.FindProcess(processID)
 	if err != nil {
 		return nil, fmt.Errorf("error loading process")
@@ -95,11 +98,15 @@ func GetProcess(name string) (*os.Process, error) {
 	return process, nil
 }
 
+// killProcess - kill a windows process
 func killProcess(gg *GladiusGuardian, name string) error {
+	// get the process by name
 	process, err := GetProcess("gladius-" + name + ".exe")
 	if err != nil {
 		return errors.New("could not find windows process")
 	}
+
+	// kill the process
 	err = process.Kill()
 	if err != nil {
 		return errors.New("could not kill windows process")

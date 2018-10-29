@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// spawnProcess - spawn a unix process
 func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, timeout *time.Duration) (*exec.Cmd, error) {
 	p := exec.Command(location)
 	p.Env = env
@@ -80,6 +81,7 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 	return p, nil
 }
 
+// killProcess - kill a unix process
 func killProcess(gg *GladiusGuardian, name string) error {
 	service := gg.services[name]
 	err := service.Process.Kill()

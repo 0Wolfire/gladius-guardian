@@ -68,6 +68,7 @@ func newServiceStatus(p *exec.Cmd) *serviceStatus {
 	}
 }
 
+// RegisterService - Add a service to the guardian
 func (gg *GladiusGuardian) RegisterService(name, execLocation string, env []string) {
 	gg.mux.Lock()
 	defer gg.mux.Unlock()
@@ -92,6 +93,7 @@ func (gg *GladiusGuardian) updateWebsocketLog(serviceName, logLine string) {
 	}
 }
 
+// SetTimeout - Set the timeout for starting processes
 func (gg *GladiusGuardian) SetTimeout(t *time.Duration) {
 	gg.mux.Lock()
 	defer gg.mux.Unlock()
@@ -99,6 +101,7 @@ func (gg *GladiusGuardian) SetTimeout(t *time.Duration) {
 	gg.spawnTimeout = t
 }
 
+// GetServicesStatus - Get the status of the service
 func (gg *GladiusGuardian) GetServicesStatus(name string) map[string]*serviceStatus {
 	gg.mux.Lock()
 	defer gg.mux.Unlock()
@@ -114,9 +117,9 @@ func (gg *GladiusGuardian) GetServicesStatus(name string) map[string]*serviceSta
 	services := make(map[string]*serviceStatus)
 	services[name] = newServiceStatus(gg.services[name])
 	return services
-
 }
 
+// StopService - Stop a service
 func (gg *GladiusGuardian) StopService(name string) error {
 	gg.mux.Lock()
 	defer gg.mux.Unlock()
@@ -142,7 +145,7 @@ func (gg *GladiusGuardian) StopService(name string) error {
 	return gg.stopServiceInternal(name)
 }
 
-// StartService - Start the controld and networkd
+// StartService - Start a service
 func (gg *GladiusGuardian) StartService(name string, env []string) error {
 	if name == "all" || name == "" {
 		var result *multierror.Error
