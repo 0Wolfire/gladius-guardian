@@ -17,7 +17,7 @@ import (
 func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, timeout *time.Duration) (*exec.Cmd, error) {
 	// p := exec.Command("cmd.exe", "/C", "start", "copy", "C:\\Users\\gladius\\Documents\\TEST.txt", "C:\\Users\\gladius\\Documents\\TEST_2.txt")
 	log.Info("Starting service")
-	p := exec.Command("cmd.exe", "/C", "start", location)
+	p := exec.Command("cmd.exe", "/C", location)
 	p.Env = append(os.Environ(), env...)
 
 	// Create standard err and out pipes
@@ -38,11 +38,19 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 		for scanner.Scan() {
 			gg.AppendToLog(name, scanner.Text())
 		}
+		err = scanner.Err()
+		if err != nil {
+			gg.AppendToLog(name, "STDOUT ERR: "+err)
+		}
 	}()
 	go func() {
 		defer stdErr.Close()
 		for stdErrScanner.Scan() {
 			gg.AppendToLog(name, stdErrScanner.Text())
+		}
+		err = stdErrScanner.Err()
+		if err != nil {
+			gg.AppendToLog(name, "STDERR ERR: "+err)
 		}
 	}()
 
@@ -107,6 +115,7 @@ func killProcess(gg *GladiusGuardian, name string) error {
 	if err != nil {
 		return errors.New("could not find windows process")
 	}
+	log.Info("Stopping service")
 
 	// kill the process
 	err = process.Kill()
