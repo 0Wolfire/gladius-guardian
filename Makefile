@@ -26,9 +26,9 @@ GUARD_SRC=$(SRC_DIR)/main.go
 GUARD_DEST=$(DST_DIR)/gladius-guardian$(BINARY_SUFFIX)
 
 # commands for go
-GOBUILD=vgo build
-GOTEST=vgo test
-GOCLEAN=vgo clean
+GOBUILD=go build
+GOTEST=go test
+GOCLEAN=go clean
 
 ##
 # MAKE TARGETS
