@@ -1,6 +1,7 @@
 module github.com/gladiusio/gladius-guardian
 
 require (
+	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/buger/jsonparser v0.0.0-20180910192245-6acdf747ae99
 	github.com/gladiusio/gladius-common v0.1.2
 	github.com/gladiusio/gladius-utils v0.2.0

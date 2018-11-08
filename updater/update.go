@@ -14,4 +14,8 @@ func GetVersion() (string, error) {
 }
 
 func CompareVersion(myVersion, officialVersion string) {
+<<<<<<< Updated upstream
+=======
+	mv := myVersion
+>>>>>>> Stashed changes
 }
