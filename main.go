@@ -7,8 +7,7 @@ import (
 	"os/signal"
 	"time"
 
-	gconfig "github.com/gladiusio/gladius-utils/config"
-
+	gconfig "github.com/gladiusio/gladius-common/pkg/utils"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/gladiusio/gladius-guardian/config"

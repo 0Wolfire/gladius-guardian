@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	gconfig "github.com/gladiusio/gladius-utils/config"
+	gconfig "github.com/gladiusio/gladius-common/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
