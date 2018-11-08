@@ -85,15 +85,3 @@ func CompareVersion(myVersion, officialVersion string) (int, error) {
 		return 0, nil
 	}
 }
-
-// VersionHandler - handler for the version
-func VersionHandler(_res []byte) (map[string]string, error) {
-
-	var response = make(map[string]string)
-
-	err := json.Unmarshal(_res, &response)
-	if err != nil {
-		return nil, err
-	}
-	return response, nil
-}
