@@ -1,11 +1,16 @@
 package guardian
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/buger/jsonparser"
+	"github.com/gladiusio/gladius-guardian/updater"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 )
@@ -122,5 +127,63 @@ func GetNewLogsWebSocketHandler(gg *GladiusGuardian) func(w http.ResponseWriter,
 		if sn != "" {
 			gg.AddLogClient(sn, w, r)
 		}
+	}
+}
+
+// VersionHandler - Sends back the version information on whether you need to update or not
+func VersionHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		service := vars["service_name"]
+
+		officialVersions, err := updater.GetOfficialVersions()
+		if err != nil {
+			ErrorHandler(w, r, "Couldn't get version", err, http.StatusBadRequest)
+		}
+
+		modules := [3]string{"guardian", "edged", "network-gateway"}
+		response := make(map[string]int)
+		var version int
+
+		for i := 0; i < 3; i++ {
+			realVersion, err := updater.GetVersion("guardian")
+			if err != nil {
+				ErrorHandler(w, r, "Couldn't get version", err, http.StatusBadRequest)
+				return
+			}
+			// realVersion, err := updater.GetVersion(modules[i])
+			version, err = updater.CompareVersion(realVersion, officialVersions[fmt.Sprintf("gladius-%s", modules[i])])
+			if err != nil {
+				ErrorHandler(w, r, "Couldn't get version", err, http.StatusBadRequest)
+				return
+			}
+			response[fmt.Sprintf("gladius-%s", modules[i])] = version
+		}
+
+		if service == "all" {
+			ResponseHandler(w, r, "Got all versions", true, nil, response)
+			return
+		}
+
+		ResponseHandler(w, r, fmt.Sprintf("Got version for %s", service), true, nil, response["service"])
+	}
+}
+
+// MyVersionHandler - my version information
+func MyVersionHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Open our jsonFile
+		jsonFile, err := os.Open("version.json")
+		if err != nil {
+			fmt.Println(err)
+		}
+		// defer the closing of our jsonFile so that we can parse it later on
+		defer jsonFile.Close()
+
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+
+		var result map[string]string
+		json.Unmarshal([]byte(byteValue), &result)
+		ResponseHandler(w, r, "Got guardian version", true, nil, result)
 	}
 }
