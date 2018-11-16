@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"time"
 
-	gconfig "github.com/gladiusio/gladius-common/pkg/utils"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/gladiusio/gladius-common/pkg/utils"
 	"github.com/gladiusio/gladius-guardian/config"
 	"github.com/gladiusio/gladius-guardian/guardian"
 	"github.com/gladiusio/gladius-guardian/service"
@@ -22,7 +22,7 @@ func main() {
 }
 
 func run() {
-	base, err := gconfig.GetGladiusBase()
+	base, err := utils.GetGladiusBase()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,

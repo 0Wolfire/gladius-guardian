@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	gconfig "github.com/gladiusio/gladius-common/pkg/utils"
+	"github.com/gladiusio/gladius-common/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
@@ -28,7 +28,7 @@ func SetupConfig(configFilePath string) {
 	ConfigOption("ControldExecutable", "gladius-controld")
 
 	// Setup gladius base for the various services
-	base, err := gconfig.GetGladiusBase()
+	base, err := utils.GetGladiusBase()
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err": err,

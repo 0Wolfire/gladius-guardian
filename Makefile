@@ -26,9 +26,10 @@ GUARD_SRC=$(SRC_DIR)/main.go
 GUARD_DEST=$(DST_DIR)/gladius-guardian$(BINARY_SUFFIX)
 
 # commands for go
-GOBUILD=go build
-GOTEST=go test
-GOCLEAN=go clean
+GOMOD=GO111MODULE=on
+GOBUILD=$(GOMOD) go build
+GOTEST=$(GOMOD) go test
+GOCLEAN=$(GOMOD) go clean
 
 ##
 # MAKE TARGETS
@@ -42,6 +43,7 @@ all:
 
 clean:
 	rm -rf ./build/*
+	$(GOMOD) go mod tidy
 	$(GOCLEAN)
 
 lint:
