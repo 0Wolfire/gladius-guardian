@@ -64,24 +64,25 @@ func GetVersion(module string) (string, error) {
 //  0 = you are up-to-date
 //  1 = you are on a newer version
 func CompareVersion(myVersion, officialVersion string) (int, error) {
-	mv := strings.Replace(myVersion, ".", "", -1)
-	ov := strings.Replace(officialVersion, ".", "", -1)
+	mv := strings.Split(myVersion, ".")
+	ov := strings.Split(officialVersion, ".")
 
-	thisVersion, err := strconv.Atoi(mv)
-	if err != nil {
-		return -1, err
-	}
+	for i, num := range mv {
+		currNum, err := strconv.Atoi(num)
+		if err != nil {
+			return -1, err
+		}
 
-	realVersion, err := strconv.Atoi(ov)
-	if err != nil {
-		return -1, err
-	}
+		expeNum, err := strconv.Atoi(ov[i])
+		if err != nil {
+			return -1, err
+		}
 
-	if thisVersion < realVersion {
-		return -1, nil
-	} else if thisVersion > realVersion {
-		return 1, nil
-	} else {
-		return 0, nil
+		if currNum < expeNum {
+			return -1, nil
+		} else if currNum > expeNum {
+			return 1, nil
+		}
 	}
+	return 0, nil
 }
