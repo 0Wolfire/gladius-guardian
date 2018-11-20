@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gladiusio/gladius-common/pkg/requests"
+	"github.com/spf13/viper"
 )
 
 // GetOfficialVersions - get version numbers from official droplet
@@ -30,11 +31,11 @@ func GetVersion(module string) (string, error) {
 	var port int
 	switch module {
 	case "guardian":
-		port = 7791
+		port = viper.GetInt("Ports.Guardian")
 	case "edged":
-		port = 7946
+		port = viper.GetInt("Ports.EdgeD")
 	case "network-gateway":
-		port = 3001
+		port = viper.GetInt("Ports.NetworkGateway")
 	default:
 		port = 0
 	}
