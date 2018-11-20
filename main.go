@@ -55,6 +55,10 @@ func run() {
 	r.HandleFunc("/service/logs", guardian.GetOldLogsHandler(gg)).Methods("GET")
 	r.HandleFunc("/service/ws/logs/{service_name}", guardian.GetNewLogsWebSocketHandler(gg))
 
+	// Version
+	r.HandleFunc("/service/version/{service_name}", guardian.VersionHandler()).Methods("GET")
+	r.HandleFunc("/version", guardian.MyVersionHandler()).Methods("GET")
+
 	// Setup a custom server so we can gracefully stop later
 	srv := &http.Server{
 		Addr:         "0.0.0.0:7791",

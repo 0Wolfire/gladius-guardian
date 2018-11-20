@@ -10,5 +10,4 @@ require (
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/sirupsen/logrus v1.1.1
 	github.com/spf13/viper v1.2.1
-	golang.org/x/sys v0.0.0-20180926160741-c2ed4eda69e7
 )
