@@ -26,11 +26,11 @@ func SetupConfig(configFilePath string) {
 	}
 
 	// add some defaults
-	AddViperDefault("NetworkdExecutable", "gladius-networkd")
-	AddViperDefault("ControldExecutable", "gladius-controld")
-	AddViperDefault("Ports.Guardian", 7791)
-	AddViperDefault("Ports.EdgeD", 7946)
-	AddViperDefault("Ports.NetworkGateway", 3001)
+	ConfigOption("NetworkdExecutable", "gladius-networkd")
+	ConfigOption("ControldExecutable", "gladius-controld")
+	ConfigOption("Ports.Guardian", 7791)
+	ConfigOption("Ports.EdgeD", 7946)
+	ConfigOption("Ports.NetworkGateway", 3001)
 
 	// Get gladius base for the various services
 	base, err := utils.GetGladiusBase()
@@ -42,8 +42,8 @@ func SetupConfig(configFilePath string) {
 
 	// Add a default environment so that we can set the gladius base of our sub
 	// processes
-	AddViperDefault("DefaultEnvironment", []string{"GLADIUSBASE=" + base})
-	AddViperDefault("MaxLogLines", 1000) // Max number of log lines to keep in ram for each service
+	ConfigOption("DefaultEnvironment", []string{"GLADIUSBASE=" + base})
+	ConfigOption("MaxLogLines", 1000) // Max number of log lines to keep in ram for each service
 
 	// Setup logging level
 	switch loglevel := viper.GetString("LogLevel"); loglevel {
@@ -60,8 +60,8 @@ func SetupConfig(configFilePath string) {
 	}
 }
 
-// AddViperDefault - add a default key
-func AddViperDefault(key string, defaultValue interface{}) string {
+// ConfigOption - add a default key
+func ConfigOption(key string, defaultValue interface{}) string {
 	viper.SetDefault(key, defaultValue)
 
 	return key
