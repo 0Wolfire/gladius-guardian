@@ -3,7 +3,7 @@ module github.com/gladiusio/gladius-guardian
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/buger/jsonparser v0.0.0-20180910192245-6acdf747ae99
-	github.com/gladiusio/gladius-common v0.1.2
+	github.com/gladiusio/gladius-common v0.1.3-0.20181120211002-efe3692520da
 	github.com/gladiusio/gladius-utils v0.2.0
 	github.com/gorilla/mux v1.6.2
 	github.com/gorilla/websocket v1.4.0

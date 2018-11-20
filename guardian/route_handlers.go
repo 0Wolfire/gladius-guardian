@@ -1,11 +1,8 @@
 package guardian
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -166,24 +163,5 @@ func VersionHandler() func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		ResponseHandler(w, r, fmt.Sprintf("Got version for %s", service), true, nil, response["service"])
-	}
-}
-
-// MyVersionHandler - my version information
-func MyVersionHandler() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// Open our jsonFile
-		jsonFile, err := os.Open("version.json")
-		if err != nil {
-			fmt.Println(err)
-		}
-		// defer the closing of our jsonFile so that we can parse it later on
-		defer jsonFile.Close()
-
-		byteValue, _ := ioutil.ReadAll(jsonFile)
-
-		var result map[string]string
-		json.Unmarshal([]byte(byteValue), &result)
-		ResponseHandler(w, r, "Got guardian version", true, nil, result)
 	}
 }

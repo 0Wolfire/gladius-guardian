@@ -7,13 +7,13 @@ import (
 	"os/signal"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
+	"github.com/gladiusio/gladius-common/pkg/routing"
 	"github.com/gladiusio/gladius-common/pkg/utils"
 	"github.com/gladiusio/gladius-guardian/config"
 	"github.com/gladiusio/gladius-guardian/guardian"
 	"github.com/gladiusio/gladius-guardian/service"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -57,7 +57,8 @@ func run() {
 
 	// Version
 	r.HandleFunc("/service/version/{service_name}", guardian.VersionHandler()).Methods("GET")
-	r.HandleFunc("/version", guardian.MyVersionHandler()).Methods("GET")
+
+	routing.AppendVersionEndpoints(r)
 
 	// Setup a custom server so we can gracefully stop later
 	srv := &http.Server{
