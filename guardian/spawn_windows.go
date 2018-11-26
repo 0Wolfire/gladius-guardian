@@ -15,7 +15,6 @@ import (
 
 // spawnProcess - spawn a windows process
 func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, timeout *time.Duration) (*exec.Cmd, error) {
-	// p := exec.Command("cmd.exe", "/C", "start", "copy", "C:\\Users\\gladius\\Documents\\TEST.txt", "C:\\Users\\gladius\\Documents\\TEST_2.txt")
 	log.Info("Starting service")
 	p := exec.Command("cmd.exe", "/C", location)
 	p.Env = append(os.Environ(), env...)
@@ -40,7 +39,7 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 		}
 		err = scanner.Err()
 		if err != nil {
-			gg.AppendToLog(name, "STDOUT ERR: " + err.Error())
+			gg.AppendToLog(name, "STDOUT ERR: "+err.Error())
 		}
 	}()
 	go func() {
@@ -50,7 +49,7 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 		}
 		err = stdErrScanner.Err()
 		if err != nil {
-			gg.AppendToLog(name, "STDERR ERR: " + err.Error())
+			gg.AppendToLog(name, "STDERR ERR: "+err.Error())
 		}
 	}()
 

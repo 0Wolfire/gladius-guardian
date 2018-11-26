@@ -26,8 +26,8 @@ func SetupConfig(configFilePath string) {
 	}
 
 	// add some defaults
-	ConfigOption("NetworkdExecutable", "gladius-networkd")
-	ConfigOption("ControldExecutable", "gladius-controld")
+	ConfigOption("NetworkdExecutable", "gladius-edged")
+	ConfigOption("ControldExecutable", "gladius-network-gateway")
 	ConfigOption("Ports.Guardian", 7791)
 	ConfigOption("Ports.EdgeD", 7946)
 	ConfigOption("Ports.NetworkGateway", 3001)

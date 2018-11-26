@@ -14,7 +14,6 @@ require (
 	github.com/gladiusio/gladius-common v0.1.3-0.20181120211002-efe3692520da
 	github.com/gladiusio/gladius-utils v0.2.0
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
-	github.com/gogo/protobuf v1.1.1 // indirect
 	github.com/google/go-cmp v0.2.0 // indirect
 	github.com/gorilla/mux v1.6.2
 	github.com/gorilla/websocket v1.4.0

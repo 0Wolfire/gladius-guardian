@@ -35,12 +35,12 @@ func run() {
 
 	// Register our two daemons
 	gg.RegisterService(
-		"networkd",
+		"edged",
 		viper.GetString("NetworkdExecutable"),
 		viper.GetStringSlice("DefaultEnvironment"),
 	)
 	gg.RegisterService(
-		"controld",
+		"network-gateway",
 		viper.GetString("ControldExecutable"),
 		viper.GetStringSlice("DefaultEnvironment"),
 	)
