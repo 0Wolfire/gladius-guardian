@@ -40,7 +40,7 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 		}
 		err = scanner.Err()
 		if err != nil {
-			gg.AppendToLog(name, "STDOUT ERR: "+err)
+			gg.AppendToLog(name, "STDOUT ERR: " + err.Error())
 		}
 	}()
 	go func() {
@@ -50,7 +50,7 @@ func (gg *GladiusGuardian) spawnProcess(name, location string, env []string, tim
 		}
 		err = stdErrScanner.Err()
 		if err != nil {
-			gg.AppendToLog(name, "STDERR ERR: "+err)
+			gg.AppendToLog(name, "STDERR ERR: " + err.Error())
 		}
 	}()
 
