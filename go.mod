@@ -11,7 +11,7 @@ require (
 	github.com/denisenkom/go-mssqldb v0.0.0-20181014144952-4e0d7dc8888f // indirect
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/fjl/memsize v0.0.0-20180929194037-2a09253e352a // indirect
-	github.com/gladiusio/gladius-common v0.1.3-0.20181120211002-efe3692520da
+	github.com/gladiusio/gladius-common v0.1.3-0.20181127155001-abba502c231d
 	github.com/gladiusio/gladius-utils v0.2.0
 	github.com/go-sql-driver/mysql v1.4.1 // indirect
 	github.com/google/go-cmp v0.2.0 // indirect

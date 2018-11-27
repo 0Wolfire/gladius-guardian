@@ -135,7 +135,7 @@ func VersionHandler() func(w http.ResponseWriter, r *http.Request) {
 
 		officialVersions, err := updater.GetOfficialVersions()
 		if err != nil {
-			ErrorHandler(w, r, "Couldn't get version", err, http.StatusBadRequest)
+			ErrorHandler(w, r, "Couldn't get official versions", err, http.StatusBadRequest)
 		}
 
 		modules := [3]string{"guardian", "edged", "network-gateway"}
@@ -143,15 +143,15 @@ func VersionHandler() func(w http.ResponseWriter, r *http.Request) {
 		var version int
 
 		for i := 0; i < 3; i++ {
-			realVersion, err := updater.GetVersion("guardian")
+			realVersion, err := updater.GetVersion(modules[i])
 			if err != nil {
-				ErrorHandler(w, r, "Couldn't get version", err, http.StatusBadRequest)
+				ErrorHandler(w, r, "Couldn't get true version of "+modules[i], err, http.StatusBadRequest)
 				return
 			}
-			// realVersion, err := updater.GetVersion(modules[i])
+
 			version, err = updater.CompareVersion(realVersion, officialVersions[fmt.Sprintf("gladius-%s", modules[i])])
 			if err != nil {
-				ErrorHandler(w, r, "Couldn't get version", err, http.StatusBadRequest)
+				ErrorHandler(w, r, "Couldn't compare version of "+modules[i], err, http.StatusBadRequest)
 				return
 			}
 			response[fmt.Sprintf("gladius-%s", modules[i])] = version
