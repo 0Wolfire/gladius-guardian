@@ -29,7 +29,7 @@ func SetupConfig(configFilePath string) {
 	ConfigOption("NetworkdExecutable", "gladius-edged")
 	ConfigOption("ControldExecutable", "gladius-network-gateway")
 	ConfigOption("Ports.Guardian", 7791)
-	ConfigOption("Ports.EdgeD", 7946)
+	ConfigOption("Ports.EdgeD", 8080)
 	ConfigOption("Ports.NetworkGateway", 3001)
 
 	// Get gladius base for the various services
