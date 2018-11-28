@@ -1,6 +1,6 @@
 package service
 
-import "github.com/gladiusio/gladius-utils/init/manager"
+import "github.com/gladiusio/gladius-common/pkg/manager"
 
 func SetupService(run func()) {
 	// Define some variables
