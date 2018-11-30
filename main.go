@@ -59,7 +59,7 @@ func run() {
 	r.HandleFunc("/service/version/{service_name}", guardian.VersionHandler()).Methods("GET")
 
 	// add the version endpoint from gladius-common
-	routing.AppendVersionEndpoints(r, "0.8.0")
+	routing.AppendVersionEndpoints(r, "0.7.0")
 
 	// Setup a custom server so we can gracefully stop later
 	srv := &http.Server{
